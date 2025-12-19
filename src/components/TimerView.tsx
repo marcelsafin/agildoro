@@ -17,7 +17,6 @@ export const TimerView: React.FC<TimerViewProps> = ({
   onSessionComplete,
   onClearActiveTask,
 }) => {
-  // TODO: Fix useEffect loop
   const [timeLeft, setTimeLeft] = useState(POMODORO_TIME);
   const [isActive, setIsActive] = useState(!!activeTask);
   const [mode, setMode] = useState<'work' | 'break'>('work');
