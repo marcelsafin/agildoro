@@ -25,5 +25,3 @@ export interface Project {
 
 export type ViewType = 'kanban' | 'timer';
 
-
-// Types WIP
