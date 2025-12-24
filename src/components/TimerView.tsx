@@ -208,5 +208,3 @@ export const TimerView: React.FC<TimerViewProps> = ({
     </div>
   );
 };
-
- 

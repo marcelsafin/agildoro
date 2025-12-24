@@ -5,8 +5,12 @@ import { CreateProjectModal } from './components/CreateProjectModal';
 import { ViewType } from './types';
 
 // Lazy load views for performance
-const KanbanView = React.lazy(() => import('./components/KanbanView').then(module => ({ default: module.KanbanView })));
-const TimerView = React.lazy(() => import('./components/TimerView').then(module => ({ default: module.TimerView })));
+const KanbanView = React.lazy(() =>
+  import('./components/KanbanView').then((module) => ({ default: module.KanbanView }))
+);
+const TimerView = React.lazy(() =>
+  import('./components/TimerView').then((module) => ({ default: module.TimerView }))
+);
 
 function App() {
   const {
@@ -24,18 +28,18 @@ function App() {
     deleteSubtask,
     moveTask,
     setActiveTaskId,
-    addTimeBudget
+    addTimeBudget,
   } = useProjectData();
 
   const [currentView, setCurrentView] = useState<ViewType>('kanban');
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const activeProject = projects.find(p => p.id === activeProjectId) || null;
-  const activeTaskObj = projects.flatMap(p => p.tasks).find(t => t.id === activeTaskId);
+  const activeProject = projects.find((p) => p.id === activeProjectId) || null;
+  const activeTaskObj = projects.flatMap((p) => p.tasks).find((t) => t.id === activeTaskId);
 
   const handleStartFocus = (taskId: string) => {
-      setActiveTaskId(taskId);
-      setCurrentView('timer');
+    setActiveTaskId(taskId);
+    setCurrentView('timer');
   };
 
   return (
@@ -50,7 +54,11 @@ function App() {
       />
 
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        <Suspense fallback={<div className="flex items-center justify-center h-full text-zinc-500">Loading...</div>}>
+        <Suspense
+          fallback={
+            <div className="flex items-center justify-center h-full text-zinc-500">Loading...</div>
+          }
+        >
           {currentView === 'kanban' && activeProject ? (
             <KanbanView
               project={activeProject}
@@ -74,7 +82,7 @@ function App() {
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-zinc-500 space-y-4">
               <p className="text-zinc-400">Select a project to get started</p>
-              <button 
+              <button
                 onClick={() => setIsModalOpen(true)}
                 className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-500 text-white text-sm"
               >

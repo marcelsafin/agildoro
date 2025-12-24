@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-      },
+    "type-coverage": "type-coverage src"
+  },
   "dependencies": {
     "react": "^19.2.3",
     "react-dom": "^19.2.3"

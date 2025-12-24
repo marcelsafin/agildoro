@@ -102,4 +102,3 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({
     </div>
   );
 };
- 

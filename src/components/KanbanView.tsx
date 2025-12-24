@@ -258,5 +258,3 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
     </div>
   );
 };
-
- 
