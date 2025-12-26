@@ -1,76 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Task } from '../types';
-
-const POMODORO_TIME = 25 * 60;
-const SHORT_BREAK = 5 * 60;
-
-interface TimerViewProps {
-  activeTask?: Task;
-  onToggleSubtask?: (taskId: string, subtaskId: string) => void;
-  onSessionComplete?: (minutes: number) => void;
-  onClearActiveTask?: () => void;
-}
+import React from 'react';
+import { TimerViewProps } from '../types';
 
 export const TimerView: React.FC<TimerViewProps> = ({
   activeTask,
+  timeLeft,
+  isActive,
+  mode,
+  totalDuration,
+  onToggleTimer,
   onToggleSubtask,
-  onSessionComplete,
   onClearActiveTask,
+  onClose,
 }) => {
-  const [timeLeft, setTimeLeft] = useState(POMODORO_TIME);
-  const [isActive, setIsActive] = useState(!!activeTask);
-  const [mode, setMode] = useState<'work' | 'break'>('work');
-  const timerRef = useRef<number | null>(null);
-  const [justCompleted, setJustCompleted] = useState(false);
-
-  // Removed auto-start effect in favor of key-based remounting and explicit handlers
-
-  useEffect(() => {
-    // Only run interval if active
-    if (isActive) {
-      timerRef.current = window.setInterval(() => {
-        setTimeLeft((prev) => {
-          if (prev <= 1) {
-            if (timerRef.current) clearInterval(timerRef.current);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [isActive]); // removed timeLeft dependency by removing it from condition
-
-  // Handle completion check strictly
-  useEffect(() => {
-    if (!isActive || timeLeft !== 0) return;
-
-    // Timer just hit 0
-    // Wrap in setTimeout to avoid "setState in effect" warning (no-shortcut: decoupling the update phase)
-    const timerId = setTimeout(() => {
-      setIsActive(false);
-      const finishedMode = mode;
-      const nextMode = mode === 'work' ? 'break' : 'work';
-
-      setMode(nextMode);
-      setTimeLeft(nextMode === 'work' ? POMODORO_TIME : SHORT_BREAK);
-
-      if ('vibrate' in navigator) navigator.vibrate([200, 100, 200]);
-
-      if (finishedMode === 'work' && onSessionComplete) {
-        onSessionComplete(25);
-        setJustCompleted(true);
-      }
-    }, 0);
-
-    return () => clearTimeout(timerId);
-  }, [timeLeft, isActive, mode, onSessionComplete]);
-
-  const toggleTimer = () => setIsActive(!isActive);
-
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -79,130 +20,156 @@ export const TimerView: React.FC<TimerViewProps> = ({
 
   const radius = 45;
   const circumference = 2 * Math.PI * radius;
-  const progress =
-    ((mode === 'work' ? POMODORO_TIME : SHORT_BREAK) - timeLeft) /
-    (mode === 'work' ? POMODORO_TIME : SHORT_BREAK);
+  // Prevent division by zero if totalDuration is somehow 0
+  const validDuration = totalDuration || 1;
+  const progress = (validDuration - timeLeft) / validDuration;
   const offset = circumference - progress * circumference;
 
-  if (justCompleted) {
-    return (
-      <div className="h-full flex flex-col items-center justify-center">
-        <div className="mb-4 text-emerald-500">
-          <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <h2 className="text-xl font-medium text-white">Session Complete</h2>
-        <p className="text-sm text-zinc-500 mb-6">25 minutes logged to project.</p>
-        <button
-          onClick={() => {
-            setJustCompleted(false);
-            setIsActive(true); // Explicitly restart timer
-          }}
-          className="bg-zinc-800 text-white px-6 py-2 rounded-full text-sm hover:bg-zinc-700"
-        >
-          Continue
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <div className="h-full flex flex-col items-center pt-8 max-w-lg mx-auto">
-      {/* Active Task HUD - Flat */}
-      <div className={`w-full mb-8 ${activeTask ? 'block' : 'hidden'}`}>
-        <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-md">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-[10px] font-bold uppercase text-blue-500 tracking-wider">
-              Current Task
-            </span>
-            {onClearActiveTask && (
-              <button
-                onClick={onClearActiveTask}
-                className="text-zinc-500 hover:text-zinc-300 text-xs"
-              >
-                &times; Stop
-              </button>
-            )}
-          </div>
-          <h3 className="text-lg font-medium text-white mb-3">{activeTask?.title}</h3>
-
-          {activeTask && activeTask.subtasks.length > 0 && (
-            <div className="space-y-1">
-              {activeTask.subtasks.map((st) => (
-                <button
-                  key={st.id}
-                  onClick={() =>
-                    onToggleSubtask && activeTask && onToggleSubtask(activeTask.id, st.id)
-                  }
-                  className="w-full flex items-center p-1 hover:bg-zinc-800 rounded-sm text-left group"
-                >
-                  <div
-                    className={`w-3 h-3 rounded-sm border mr-3 flex items-center justify-center ${st.completed ? 'bg-blue-600 border-blue-600' : 'border-zinc-600'}`}
-                  ></div>
-                  <span
-                    className={`text-sm ${st.completed ? 'text-zinc-600 line-through' : 'text-zinc-300'}`}
-                  >
-                    {st.title}
-                  </span>
-                </button>
-              ))}
+    <div className="h-full w-full relative flex flex-col overflow-hidden">
+      {/* Top Navigation Bar */}
+      <div className="h-[77px] flex-shrink-0 flex items-center px-8 relative">
+        <div className="w-full max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center">
+            <div
+              className={`flex flex-col transition-opacity duration-300 ${activeTask ? 'opacity-100' : 'opacity-0'}`}
+            >
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600 mb-0.5">
+                Current Task
+              </span>
+              <span className="text-xs font-semibold text-blue-500 truncate max-w-[400px]">
+                {activeTask?.title || 'None'}
+              </span>
             </div>
+          </div>
+
+          {onClose && (
+            <button
+              onClick={onClose}
+              className="p-2 -mr-2 text-zinc-500 hover:text-white transition-all hover:rotate-90 duration-500"
+              title="Back to board"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
           )}
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col items-center justify-center w-full">
-        <div className="relative w-64 h-64 flex items-center justify-center mb-8">
-          <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
-            <circle
-              cx="50"
-              cy="50"
-              r={radius}
-              stroke="#27272a"
-              strokeWidth="2"
-              fill="transparent"
-            />
-            <circle
-              cx="50"
-              cy="50"
-              r={radius}
-              stroke="currentColor"
-              strokeWidth="2"
-              fill="transparent"
-              strokeDasharray={circumference}
-              strokeDashoffset={offset}
-              strokeLinecap="round"
-              className={`${mode === 'work' ? 'text-blue-500' : 'text-emerald-500'} transition-all duration-300`}
-            />
-          </svg>
+      {/* Main Content Area */}
+      <div className="flex-1 flex w-full max-w-6xl mx-auto px-8 overflow-hidden relative">
+        {/* Left Side: Subtask List */}
+        <div
+          className={`hidden lg:flex flex-col w-64 pt-8 pb-12 flex-shrink-0 transition-all duration-700 ${activeTask ? 'opacity-100' : 'opacity-0'}`}
+        >
+          <div className="flex items-center space-x-2 mb-6">
+            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-600">
+              Checklist
+            </span>
+          </div>
 
-          <div className="text-center z-10 select-none">
-            <div className="text-6xl font-light tabular-nums text-zinc-100">
-              {formatTime(timeLeft)}
-            </div>
-            <div className="text-xs font-bold uppercase tracking-widest text-zinc-600 mt-2">
-              {isActive ? (mode === 'work' ? 'Focusing' : 'Break') : 'Paused'}
-            </div>
+          <div className="relative space-y-4 overflow-y-auto custom-scrollbar-subtle pb-4 pr-4">
+            {activeTask?.subtasks.map((st) => (
+              <button
+                key={st.id}
+                onClick={() =>
+                  onToggleSubtask && activeTask && onToggleSubtask(activeTask.id, st.id)
+                }
+                className="group flex items-center gap-4 text-left w-full relative"
+              >
+                <div
+                  className={`w-2 h-2 rounded-full border transition-all flex-shrink-0 ${st.completed ? 'bg-blue-600 border-blue-600' : 'bg-zinc-950 border-zinc-800 group-hover:border-zinc-500'}`}
+                />
+                <span
+                  className={`text-[12px] font-medium transition-all duration-300 ${st.completed ? 'text-zinc-600 line-through' : 'text-zinc-400 group-hover:text-zinc-200'}`}
+                >
+                  {st.title}
+                </span>
+              </button>
+            ))}
+            {activeTask && (!activeTask.subtasks || activeTask.subtasks.length === 0) && (
+              <p className="text-[11px] text-zinc-700 italic">No subtasks defined</p>
+            )}
           </div>
         </div>
 
-        {/* Single Control Button */}
-        <div className="flex items-center justify-center">
-          <button
-            onClick={toggleTimer}
-            className={`w-20 h-20 rounded-full flex items-center justify-center transition-all active:scale-95 ${isActive ? 'bg-zinc-800 text-white border border-zinc-700' : 'bg-white text-black'}`}
-          >
-            {isActive ? (
-              <svg className="w-8 h-8" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-              </svg>
-            ) : (
-              <svg className="w-8 h-8 ml-1" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            )}
-          </button>
+        {/* Center: Hero Timer Display */}
+        <div className="flex-1 flex flex-col items-center justify-center relative">
+          <div className="relative w-80 h-80 flex items-center justify-center mb-12 flex-shrink-0">
+            <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
+              <circle
+                cx="50"
+                cy="50"
+                r={radius}
+                stroke="#18181b"
+                strokeWidth="0.5"
+                fill="transparent"
+              />
+              <circle
+                cx="50"
+                cy="50"
+                r={radius}
+                stroke="currentColor"
+                strokeWidth="1"
+                fill="transparent"
+                strokeDasharray={circumference}
+                strokeDashoffset={offset}
+                strokeLinecap="round"
+                className={`${mode === 'work' ? 'text-blue-500' : 'text-emerald-500'} transition-all duration-1000 ease-linear`}
+              />
+            </svg>
+
+            <div className="text-center z-10 select-none">
+              <div className="text-[80px] font-extralight tabular-nums text-white leading-none tracking-tighter">
+                {formatTime(timeLeft)}
+              </div>
+              <div
+                className={`text-[10px] font-bold uppercase tracking-[0.4em] mt-6 transition-colors duration-500 ${mode === 'work' ? 'text-blue-500/40' : 'text-emerald-500/40'}`}
+              >
+                {isActive ? (mode === 'work' ? 'Focusing' : 'Resting') : 'Paused'}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center">
+            <button
+              onClick={onToggleTimer}
+              className="w-16 h-16 rounded-full border border-zinc-800 flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-900 transition-all duration-300 active:scale-95"
+            >
+              {isActive ? (
+                <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6 ml-1" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Right Side: Balancing Spacer */}
+        <div className="hidden lg:block w-64 flex-shrink-0" />
+      </div>
+
+      {/* Bottom Footer Area */}
+      <div className="h-[81px] flex-shrink-0 flex items-center justify-center relative">
+        <div className="w-full max-w-6xl mx-auto flex justify-center">
+          {onClearActiveTask && activeTask && (
+            <button onClick={onClearActiveTask} className="group flex flex-col items-center">
+              <span className="text-zinc-600 group-hover:text-red-500 transition-colors text-[10px] font-bold uppercase tracking-[0.2em] py-1">
+                Stop Session
+              </span>
+              <div className="h-px w-0 bg-red-500 group-hover:w-full transition-all duration-500" />
+            </button>
+          )}
         </div>
       </div>
     </div>

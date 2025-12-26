@@ -46,8 +46,12 @@ export const useProjectData = () => {
     setProjects((prev) => prev.map((p) => (p.id === activeProjectId ? updater(p) : p)));
   };
 
+  const updateProjectTitle = (projectId: string, newTitle: string) => {
+    setProjects((prev) => prev.map((p) => (p.id === projectId ? { ...p, title: newTitle } : p)));
+  };
+
   const createProject = (title: string, days: number, hours: number) => {
-    let totalMinutes = (days * 8 + hours) * 60;
+    let totalMinutes = (days * 24 + hours) * 60;
     if (totalMinutes <= 0) totalMinutes = 60;
 
     const newProject: Project = {
@@ -82,8 +86,14 @@ export const useProjectData = () => {
     updateActiveProject((p) => ({ ...p, tasks: [...p.tasks, newTask] }));
   };
 
+  const updateProjectForTask = (taskId: string, updater: (p: Project) => Project) => {
+    const projectWithTask = projects.find((p) => p.tasks.some((t) => t.id === taskId));
+    if (!projectWithTask) return;
+    setProjects((prev) => prev.map((p) => (p.id === projectWithTask.id ? updater(p) : p)));
+  };
+
   const updateTaskStatus = (id: string, status: TaskStatus) => {
-    updateActiveProject((p) => ({
+    updateProjectForTask(id, (p) => ({
       ...p,
       tasks: p.tasks.map((t) => (t.id === id ? { ...t, status } : t)),
     }));
@@ -93,7 +103,7 @@ export const useProjectData = () => {
   };
 
   const deleteTask = (id: string) => {
-    updateActiveProject((p) => ({
+    updateProjectForTask(id, (p) => ({
       ...p,
       tasks: p.tasks.filter((t) => t.id !== id),
     }));
@@ -101,7 +111,7 @@ export const useProjectData = () => {
   };
 
   const addSubtask = (taskId: string, title: string) => {
-    updateActiveProject((p) => ({
+    updateProjectForTask(taskId, (p) => ({
       ...p,
       tasks: p.tasks.map((t) => {
         if (t.id !== taskId) return t;
@@ -114,7 +124,7 @@ export const useProjectData = () => {
   };
 
   const toggleSubtask = (taskId: string, subtaskId: string) => {
-    updateActiveProject((p) => ({
+    updateProjectForTask(taskId, (p) => ({
       ...p,
       tasks: p.tasks.map((t) => {
         if (t.id !== taskId) return t;
@@ -129,13 +139,33 @@ export const useProjectData = () => {
   };
 
   const deleteSubtask = (taskId: string, subtaskId: string) => {
-    updateActiveProject((p) => ({
+    updateProjectForTask(taskId, (p) => ({
       ...p,
       tasks: p.tasks.map((t) => {
         if (t.id !== taskId) return t;
         return {
           ...t,
           subtasks: t.subtasks.filter((st) => st.id !== subtaskId),
+        };
+      }),
+    }));
+  };
+
+  const updateTaskTitle = (taskId: string, newTitle: string) => {
+    updateProjectForTask(taskId, (p) => ({
+      ...p,
+      tasks: p.tasks.map((t) => (t.id === taskId ? { ...t, title: newTitle } : t)),
+    }));
+  };
+
+  const updateSubtaskTitle = (taskId: string, subtaskId: string, newTitle: string) => {
+    updateProjectForTask(taskId, (p) => ({
+      ...p,
+      tasks: p.tasks.map((t) => {
+        if (t.id !== taskId) return t;
+        return {
+          ...t,
+          subtasks: t.subtasks.map((st) => (st.id === subtaskId ? { ...st, title: newTitle } : st)),
         };
       }),
     }));
@@ -189,12 +219,15 @@ export const useProjectData = () => {
     setActiveTaskId,
     createProject,
     deleteProject,
+    updateProjectTitle,
     addTask,
     updateTaskStatus,
     deleteTask,
     addSubtask,
     toggleSubtask,
     deleteSubtask,
+    updateTaskTitle,
+    updateSubtaskTitle,
     moveTask,
     addTimeBudget,
   };
