@@ -1,6 +1,6 @@
 # FocusLoop
 
-FocusLoop is a persistent, mobile-first Agile planning tool and Focus Timer (PWA).
+Agildoro is a productivity tool with Agile planning and Focus Timer (MVP).
 
 ## Features
 
